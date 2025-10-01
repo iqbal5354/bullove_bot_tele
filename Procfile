@@ -1,0 +1,1 @@
+worker: python bullove.py
