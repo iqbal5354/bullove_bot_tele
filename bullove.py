@@ -6,20 +6,27 @@ from datetime import datetime, timedelta
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import CreateChannelRequest
 from telethon.errors import FloodWaitError
-from dotenv import load_dotenv
 
-# === Load ENV untuk lokal (tidak berpengaruh di Railway) ===
-load_dotenv()
-
-# Ambil variable dari Railway / .env
-API_ID = int(os.getenv("API_ID"))
+# === Ambil variable dari Railway ===
+API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 SESSION = os.getenv("SESSION")
+
+print("=== DEBUG Railway ENV ===")
+print("API_ID   =", API_ID)
+print("API_HASH =", str(API_HASH)[:10] + "..." if API_HASH else None)
+print("SESSION  =", str(SESSION)[:20] + "..." if SESSION else None)
+
+# Validasi
+if not API_ID or not API_HASH or not SESSION:
+    raise SystemExit("❌ ENV tidak lengkap! Pastikan API_ID, API_HASH, SESSION sudah diisi di Railway.")
+
+API_ID = int(API_ID)
 
 # Inisialisasi client pakai SESSION string
 bullove = TelegramClient(session=SESSION, api_id=API_ID, api_hash=API_HASH)
 
-# OWNER_ID otomatis sesuai akun yang login
+# OWNER_ID otomatis sesuai akun
 OWNER_ID = None
 
 async def init_owner():
@@ -29,7 +36,7 @@ async def init_owner():
     print(f"✅ OWNER_ID otomatis: {OWNER_ID} ({me.first_name})")
 
 
-# === Handler Command .buat g ===
+# === Command: .buat g ===
 @bullove.on(events.NewMessage(pattern=r"\.buat g(?: (\d+))?(?: (.+))"))
 async def handler_buat(event):
     if event.sender_id != OWNER_ID:
@@ -68,6 +75,7 @@ async def handler_buat(event):
 
             await tampilkan_progress(msg, jumlah, i)
 
+            # Kirim pesan otomatis
             for _ in range(4):
                 await bullove.send_message(chat_id, get_random_pesan())
                 await asyncio.sleep(1)
@@ -81,16 +89,15 @@ async def handler_buat(event):
             jam, sisa = divmod(sisa, 3600)
             menit, detik = divmod(sisa, 60)
 
-            # Hitung kapan bisa bikin lagi
             waktu_bisa = datetime.now() + timedelta(seconds=e.seconds)
             waktu_bisa_fmt = waktu_bisa.strftime("%d-%m-%Y %H:%M:%S")
 
             hasil.append(
-                f"⛔ Kena limit Telegram!\n"
+                f"⛔ Limit Telegram!\n"
                 f"Tunggu {hari} hari {jam} jam {menit} menit {detik} detik.\n"
-                f"Kamu bisa membuat grup lagi pada: **{waktu_bisa_fmt}**"
+                f"Bisa buat lagi: **{waktu_bisa_fmt}**"
             )
-            break  # stop loop biar nggak lanjut spam
+            break
 
         except Exception as e:
             hasil.append(f"❌ Gagal buat {nama} {i+1} → {e}")
@@ -98,7 +105,7 @@ async def handler_buat(event):
     await msg.edit("🎉 Hasil pembuatan grup:\n\n" + "\n".join(hasil), link_preview=False)
 
 
-# === Handler Ping ===
+# === Command: .ping ===
 @bullove.on(events.NewMessage(pattern=r"\.ping"))
 async def handler_ping(event):
     if event.sender_id != OWNER_ID:
@@ -130,6 +137,7 @@ async def tampilkan_progress(msg, total, current):
 async def main():
     await bullove.start()
     await init_owner()
+    print("🤖 Bullove Bot sudah jalan...")
     await bullove.run_until_disconnected()
 
 asyncio.run(main())
