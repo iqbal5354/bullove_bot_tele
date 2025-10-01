@@ -3,38 +3,47 @@ import asyncio
 import random
 import time
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# === Patch untuk Python 3.13 (hilangnya imghdr) ===
+try:
+    import imghdr  # normal di Python < 3.13
+except ImportError:
+    import imghdr_py as imghdr  # fallback dari requirements
+
 from telethon import TelegramClient, events
-from telethon.sessions import StringSession
 from telethon.tl.functions.channels import CreateChannelRequest
 from telethon.errors import FloodWaitError
 
-# === Ambil ENV dari Railway ===
+# === Load ENV ===
+load_dotenv()
+
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 SESSION = os.getenv("SESSION")
 
+# Debug ENV
 print("=== DEBUG Railway ENV ===")
 print("API_ID   =", API_ID)
 print("API_HASH =", API_HASH)
-print("SESSION  =", SESSION[:10] + "..." if SESSION else None)
+print("SESSION  =", SESSION)
 
-# Cek ENV lengkap atau tidak
 if not API_ID or not API_HASH or not SESSION:
-    raise Exception("❌ ENV tidak lengkap! Pastikan API_ID, API_HASH, SESSION sudah diisi di Railway.")
+    print("❌ ENV tidak lengkap! Pastikan API_ID, API_HASH, SESSION sudah diisi di Railway.")
+    exit(1)
 
-# Inisialisasi client pakai StringSession
-bullove = TelegramClient(StringSession(SESSION), int(API_ID), API_HASH)
+API_ID = int(API_ID)
 
-# OWNER_ID otomatis
+# Inisialisasi client pakai SESSION
+bullove = TelegramClient(session=SESSION, api_id=API_ID, api_hash=API_HASH)
+
 OWNER_ID = None
-
 
 async def init_owner():
     global OWNER_ID
     me = await bullove.get_me()
     OWNER_ID = me.id
     print(f"✅ OWNER_ID otomatis: {OWNER_ID} ({me.first_name})")
-
 
 # === Handler Command .buat g ===
 @bullove.on(events.NewMessage(pattern=r"\.buat g(?: (\d+))?(?: (.+))"))
@@ -63,7 +72,7 @@ async def handler_buat(event):
         try:
             grup = await bullove(CreateChannelRequest(
                 title=f"{nama} {i+1}",
-                about="Grup by Bullove",
+                about="Grup by @WARUNGBULLOVE",
                 megagroup=True
             ))
             chat_id = grup.chats[0].id
@@ -75,14 +84,13 @@ async def handler_buat(event):
 
             await tampilkan_progress(msg, jumlah, i)
 
-            for _ in range(3):
+            for _ in range(4):
                 await bullove.send_message(chat_id, get_random_pesan())
                 await asyncio.sleep(1)
 
             hasil.append(f"✅ [{nama} {i+1}]({link})")
 
         except FloodWaitError as e:
-            # Hitung waktu tunggu
             sisa = e.seconds
             hari, sisa = divmod(sisa, 86400)
             jam, sisa = divmod(sisa, 3600)
@@ -92,9 +100,9 @@ async def handler_buat(event):
             waktu_bisa_fmt = waktu_bisa.strftime("%d-%m-%Y %H:%M:%S")
 
             hasil.append(
-                f"⛔ Limit Telegram!\n"
-                f"Tunggu {hari}h {jam}j {menit}m {detik}d.\n"
-                f"Bisa buat grup lagi: **{waktu_bisa_fmt}**"
+                f"⛔ Kena limit Telegram!\n"
+                f"Tunggu {hari} hari {jam} jam {menit} menit {detik} detik.\n"
+                f"Kamu bisa membuat grup lagi pada: **{waktu_bisa_fmt}**"
             )
             break
 
@@ -102,7 +110,6 @@ async def handler_buat(event):
             hasil.append(f"❌ Gagal buat {nama} {i+1} → {e}")
 
     await msg.edit("🎉 Hasil pembuatan grup:\n\n" + "\n".join(hasil), link_preview=False)
-
 
 # === Handler Ping ===
 @bullove.on(events.NewMessage(pattern=r"\.ping"))
@@ -115,23 +122,20 @@ async def handler_ping(event):
     ms = int((end - start) * 1000)
     await msg.edit(f"🏓 Pong! `{ms}ms`")
 
-
 # === Fungsi Tambahan ===
 def get_random_pesan():
     pesan_list = [
         "Halo semua 👋",
         "Selamat datang di grup!",
-        "Jangan lupa baca rules 📜",
+        "Jangan lupa baca rules ya 📜",
         "Semoga betah 🤝"
     ]
     return random.choice(pesan_list)
-
 
 async def tampilkan_progress(msg, total, current):
     progress = int((current+1) / total * 100)
     bar = "█" * ((current+1) * 5 // total) + "░" * (5 - ((current+1) * 5 // total))
     await msg.edit(f"⏳ Membuat grup {current+1}/{total}...\n[{bar}] {progress}%")
-
 
 # === Run Bot ===
 async def main():
