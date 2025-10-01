@@ -1,8 +1,11 @@
 import os
 import asyncio
 import random
+import time
+from datetime import datetime, timedelta
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import CreateChannelRequest
+from telethon.errors import FloodWaitError
 from dotenv import load_dotenv
 
 # === Load ENV untuk lokal (tidak berpengaruh di Railway) ===
@@ -26,7 +29,7 @@ async def init_owner():
     print(f"✅ OWNER_ID otomatis: {OWNER_ID} ({me.first_name})")
 
 
-# === Handler Command ===
+# === Handler Command .buat g ===
 @bullove.on(events.NewMessage(pattern=r"\.buat g(?: (\d+))?(?: (.+))"))
 async def handler_buat(event):
     if event.sender_id != OWNER_ID:
@@ -70,10 +73,41 @@ async def handler_buat(event):
                 await asyncio.sleep(1)
 
             hasil.append(f"✅ [{nama} {i+1}]({link})")
+
+        except FloodWaitError as e:
+            # Hitung waktu tunggu
+            sisa = e.seconds
+            hari, sisa = divmod(sisa, 86400)
+            jam, sisa = divmod(sisa, 3600)
+            menit, detik = divmod(sisa, 60)
+
+            # Hitung kapan bisa bikin lagi
+            waktu_bisa = datetime.now() + timedelta(seconds=e.seconds)
+            waktu_bisa_fmt = waktu_bisa.strftime("%d-%m-%Y %H:%M:%S")
+
+            hasil.append(
+                f"⛔ Kena limit Telegram!\n"
+                f"Tunggu {hari} hari {jam} jam {menit} menit {detik} detik.\n"
+                f"Kamu bisa membuat grup lagi pada: **{waktu_bisa_fmt}**"
+            )
+            break  # stop loop biar nggak lanjut spam
+
         except Exception as e:
             hasil.append(f"❌ Gagal buat {nama} {i+1} → {e}")
 
-    await msg.edit("🎉 Grup berhasil dibuat:\n\n" + "\n".join(hasil), link_preview=False)
+    await msg.edit("🎉 Hasil pembuatan grup:\n\n" + "\n".join(hasil), link_preview=False)
+
+
+# === Handler Ping ===
+@bullove.on(events.NewMessage(pattern=r"\.ping"))
+async def handler_ping(event):
+    if event.sender_id != OWNER_ID:
+        return
+    start = time.time()
+    msg = await event.reply("🏓 Pong...")
+    end = time.time()
+    ms = int((end - start) * 1000)
+    await msg.edit(f"🏓 Pong! `{ms}ms`")
 
 
 # === Fungsi Tambahan ===
