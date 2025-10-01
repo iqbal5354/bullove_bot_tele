@@ -5,11 +5,7 @@ import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-# === Patch untuk Python 3.13 (hilangnya imghdr) ===
-try:
-    import imghdr  # normal di Python < 3.13
-except ImportError:
-    import imghdr_py as imghdr  # fallback dari requirements
+
 
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import CreateChannelRequest
