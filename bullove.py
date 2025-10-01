@@ -12,13 +12,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Ambil variable dari Railway / .env
-
-
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
 SESSION = os.getenv("SESSION")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+
 # Inisialisasi client pakai SESSION string
 bullove = TelegramClient(session=SESSION, api_id=API_ID, api_hash=API_HASH)
 
